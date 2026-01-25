@@ -2,7 +2,8 @@
 
 This repository contains experimental data and statistical analysis scripts for replicating the results in the paper: 
 
-Priniski, et al. (2025). Network structure shapes consensus dynamics through individual decisions. _PNAS_.
+
+Priniski, et al. (2025). [Network structure shapes consensus dynamics through individual decisions. ](https://www.pnas.org/doi/abs/10.1073/pnas.2520483123?af=R)_PNAS_.
 
 Please refer to the following data files, Jupyter Notebooks, and R scripts listed. Subdirectories are formatted as headers, with important files in that directory listed as bullet points. The main replication files are marked with a ⭐️, and are `InteractionDynamics.R`, `Focal Narrative Alignment.ipynb`, `NarrativeShifts.R` (for modeling experimental data), and `SimulationCode.ipynb` (running the agent-based models). For more detailed instructions on running these scripts, consult comments in the notebooks and R scripts. 
 
