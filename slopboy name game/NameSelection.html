@@ -10,20 +10,7 @@
 
 <br>
 
-<p><b>Time left: <span id="timer">{{ timeout_seconds }}</span> seconds</b></p>
 
 {{ next_button }}
-
-<script>
-    let seconds = {{ timeout_seconds }};
-    const timer = setInterval(function () {
-        seconds--;
-        document.getElementById("timer").innerText = seconds;
-        if (seconds <= 0) {
-            clearInterval(timer);
-            document.querySelector("form").submit();
-        }
-    }, 1000);
-</script>
 
 {{ endblock }}

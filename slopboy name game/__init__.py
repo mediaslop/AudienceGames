@@ -17,7 +17,7 @@ class C(BaseConstants):
     NAME_IN_URL = 'timed_experiment'
     PLAYERS_PER_GROUP = 2
     NUM_ROUNDS = 40                     # number of rounds in the game
-    num_participants = 50             # number of players in the game
+    num_participants = 20             # number of players in the game
     network_structure = 'homogeneous'    # network types are: random, spatial, homogeneous, influencer, and double-influencer
     n_influencer = 0                    # number of influencers (use only with influencer network)
     #delete impressions = ['competence', 'dominance', 'maturity', 'likeability', 'trustworthiness']
@@ -122,7 +122,8 @@ class NameSelection(Page):
     @staticmethod
     def vars_for_template(player: Player):
         return dict(curr_round=player.round_number,
-                    total_rounds=C.NUM_ROUNDS)
+                    total_rounds=C.NUM_ROUNDS,
+                    timeout=NameSelection.timeout_seconds,)
     
     #@staticmethod
     #def js_vars(player):
