@@ -1,5 +1,5 @@
-# Face naming network experiment
+# Name Game
 
-#### __init__.py contains the code to run the oTree app
-#### generate_groups.py contains the code to generate random, spatial, and homogeneous graphs and create pairs from these graphs
-#### Use custom networks to specify specific pairwise pairings (used in publications)
+To run, create a new room with N = 20 (base). If you update the custom_network file, which defines how people are paired, make sure N when creating the room equals the size of the custom_network. 
+
+To do, update the System environment variable with a password. 
