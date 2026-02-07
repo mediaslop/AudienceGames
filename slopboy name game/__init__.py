@@ -20,8 +20,6 @@ class C(BaseConstants):
     num_participants = 20             # number of players in the game
     network_structure = 'homogeneous'    # network types are: random, spatial, homogeneous, influencer, and double-influencer
     n_influencer = 0                    # number of influencers (use only with influencer network)
-    #delete impressions = ['competence', 'dominance', 'maturity', 'likeability', 'trustworthiness']
-    #elete choice = [[1, 'Strongly disagree (1)'],[2, 'Disagree (2)'],[3, 'Moderately disagree (3)'],[4, 'Neither agree nor disagree (4)'],[5, 'Moderately agree (5)'],[6, 'Agree (6)'],[7, 'Strongly agree (7)']]
     custom_network = "spatial/connection_20.40.4_8.csv"     # default is "". Set it to filename.txt if using custom network
 
 class Subsession(BaseSubsession):
@@ -48,11 +46,6 @@ def creating_session(subsession):
     round_number = subsession.round_number
     if round_number == 1:
         if C.custom_network != "":
-            #my_list = []
-            #with open(path+"/custom_networks/"+C.custom_network, "r") as f:
-            #    my_list = json.load(f)
-            #    print(my_list)
-            #subsession.session.group_list = my_list
 
             my_list = []
             with open(path+"/custom_networks/"+C.custom_network, "r") as f:
@@ -124,37 +117,35 @@ class NameSelection(Page):
         return dict(curr_round=player.round_number,
                     total_rounds=C.NUM_ROUNDS,
                     timeout=NameSelection.timeout_seconds,)
-    
-    #@staticmethod
-    #def js_vars(player):
-    #    other_player = player.get_others_in_group()[0].field_maybe_none("imp_idx")
-    #    c_ind = -1
-    #    indices = [x for x in range(len(C.impressions))]
-    #    print("imp_idx: ", other_player)
-    #    if other_player is not None and other_player >=0:
-    #        c_ind = other_player
-    #    else:
-    #        random.shuffle(indices)
-    #        c_ind = random.choice(indices)
-    #        player.get_others_in_group()[0].imp_idx = c_ind
-    #    return dict(c_ind=c_ind,)
 
 #reward policy
+#class ResultsWaitPage(WaitPage):
+#    @staticmethod
+#    def after_all_players_arrive(group: Group):
+#        player_1, player_2 = group.get_players()
+#        player_1.payoff, player_2.payoff = 0, 0
+#        if player_1.name != '' and player_2.name != '' and player_1.name.lower() == player_2.name.lower():
+#            player_1.payoff += 1
+#            player_2.payoff += 1
+
+#updated reward, with softer matching criteria.
 class ResultsWaitPage(WaitPage):
     @staticmethod
     def after_all_players_arrive(group: Group):
         player_1, player_2 = group.get_players()
         player_1.payoff, player_2.payoff = 0, 0
-        if player_1.name != '' and player_2.name != '' and player_1.name.lower() == player_2.name.lower():
+
+        def normalize(s):
+            return re.sub(r'[^a-z0-9]', '', s.lower())
+
+        if (
+            player_1.name != '' and 
+            player_2.name != '' and 
+            normalize(player_1.name) == normalize(player_2.name)
+        ):
             player_1.payoff += 1
             player_2.payoff += 1
-        #p1_choice = [player_1.field_maybe_none('competence'), player_1.field_maybe_none('dominance'), player_1.field_maybe_none('maturity'), player_1.field_maybe_none('likeability'), player_1.field_maybe_none('trustworthiness')]
-        #p2_choice = [player_2.field_maybe_none('competence'), player_2.field_maybe_none('dominance'), player_2.field_maybe_none('maturity'), player_2.field_maybe_none('likeability'), player_2.field_maybe_none('trustworthiness')]
-        #for x, y in zip(p1_choice, p2_choice):
-        #    if x and y and x == y:
-        #        player_1.payoff += 1
-        #        player_2.payoff += 1
-        #        break
+
         
 class Results(Page):
     timeout_seconds = 10
