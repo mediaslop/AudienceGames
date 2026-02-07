@@ -3,42 +3,6 @@ from os import environ
 
 SESSION_CONFIGS = [
     dict(
-        name='network_experiment',
-        display_name="Network Experiment",
-        app_sequence=['network_experiment'],
-        num_demo_participants=6,
-    ),
-        dict(
-        name='network_experiment_reward',
-        display_name="Network Experiment Reward",
-        app_sequence=['network_experiment_reward'],
-        num_demo_participants=6,
-    ),
-    dict(
-        name='causality',
-        display_name="Network Experiment with Causal Relations",
-        app_sequence=['causality'],
-        num_demo_participants=6,
-    ),
-    dict(
-        name='hashtag_experiment',
-        display_name="Hashtag Experiment",
-        app_sequence=['hashtag_experiment'],
-        num_demo_participants=6,
-    ),
-    dict(
-        name='facename2',
-        display_name="v2 of face",
-        app_sequence=['network_experiment2'],
-        num_demo_participants=6,
-    ),
-    dict(
-        name='perspective_prompting',
-        display_name="Perspective Prompting",
-        app_sequence=['perspective_prompting'],
-        num_demo_participants=6,
-    ),
-    dict(
         name='timed_experiment',
         display_name="Timed Name Game",
         app_sequence=['timed_experiment'],
@@ -67,12 +31,6 @@ LANGUAGE_CODE = 'en'
 USE_POINTS = True
 
 ROOMS = [
-    dict(name='network_experiment', display_name='Network Experiment'),
-    dict(name='network_experiment_reward', display_name='Network Experiment Reward'),
-    dict(name='causality', display_name='Causal Experiment'),
-    dict(name='hashtag_experiment', display_name='Hashtag Experiment'),
-    dict(name='network_experiment2', display_name = 'Network Experiment 2'),
-    dict(name='perspective_prompting', display_name = 'Perspective Prompting'),
     dict(name='timed_experiment', display_name = 'Timed Experiment'),
 ]
 
