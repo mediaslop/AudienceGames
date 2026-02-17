@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Network Experiment Visualizer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #181b22;
+    --border: #252830;
+    --accent: #00e5ff;
+    --accent2: #ff3e6c;
+    --accent3: #a8ff78;
+    --text: #e8eaf0;
+    --muted: #5a6070;
+    --gold: #ffd166;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.015) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 40px 32px;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 48px;
+    gap: 24px;
+  }
+
+  .header-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(28px, 4vw, 48px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+
+  .header-title span {
+    color: var(--accent);
+    display: block;
+  }
+
+  .header-sub {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+
+  /* UPLOAD ZONE */
+  #upload-zone {
+    border: 1.5px dashed var(--border);
+    border-radius: 4px;
+    padding: 48px 40px;
+    text-align: center;
+    background: var(--surface);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    margin-bottom: 48px;
+  }
+
+  #upload-zone:hover, #upload-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(0,229,255,0.04);
+  }
+
+  #upload-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .upload-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .upload-hint {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* SESSION TABS */
+  #session-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+
+  .session-tab {
+    padding: 6px 16px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    border-radius: 2px;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+
+  .session-tab.active, .session-tab:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,229,255,0.06);
+  }
+
+  .all-tab.active, .all-tab:hover {
+    border-color: var(--accent3);
+    color: var(--accent3);
+    background: rgba(168,255,120,0.06);
+  }
+
+  /* DASHBOARD GRID */
+  #dashboard {
+    display: none;
+    gap: 24px;
+  }
+
+  #dashboard.visible {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .panel-num {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border: 1px solid var(--accent);
+    padding: 2px 7px;
+    border-radius: 2px;
+    opacity: 0.7;
+  }
+
+  .panel-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  .panel-body {
+    padding: 24px;
+  }
+
+  /* Chart 1: Line chart */
+  .chart-area {
+    position: relative;
+    width: 100%;
+  }
+
+  #line-chart-canvas {
+    width: 100%;
+    display: block;
+  }
+
+  /* Chart 2: Heatmap */
+  #heatmap-wrap {
+    overflow-x: auto;
+  }
+
+  #heatmap-container {
+    display: grid;
+    gap: 3px;
+    min-width: fit-content;
+  }
+
+  .heatmap-cell {
+    width: 100%;
+    aspect-ratio: 1.2;
+    min-width: 52px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    color: rgba(0,0,0,0.7);
+    font-weight: 500;
+    transition: transform 0.1s;
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+    padding: 2px;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  .heatmap-cell:hover {
+    transform: scale(1.05);
+    z-index: 10;
+  }
+
+  .heatmap-cell.header-cell {
+    background: transparent !important;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    justify-content: center;
+    aspect-ratio: auto;
+    min-height: 28px;
+    padding: 4px 2px;
+  }
+
+  .heatmap-cell.row-label {
+    background: transparent !important;
+    color: var(--muted);
+    font-size: 10px;
+    justify-content: flex-end;
+    padding-right: 8px;
+    aspect-ratio: auto;
+    min-width: 70px;
+    white-space: nowrap;
+  }
+
+  /* Tooltip */
+  #tooltip {
+    position: fixed;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    pointer-events: none;
+    display: none;
+    z-index: 1000;
+    color: var(--text);
+    white-space: nowrap;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+
+  #tooltip .tt-name { color: var(--accent); font-weight: 500; margin-bottom: 2px; }
+  #tooltip .tt-response { color: var(--accent3); }
+  #tooltip .tt-payoff { color: var(--gold); }
+
+  /* Leaderboard */
+  #leaderboard-panel {
+    grid-column: 1 / -1;
+  }
+
+  #leaderboard-list {
+    display: grid;
+    gap: 0;
+  }
+
+  .lb-row {
+    display: grid;
+    grid-template-columns: 48px 1fr auto auto;
+    align-items: center;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    gap: 16px;
+    transition: background 0.1s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .lb-row:last-child { border-bottom: none; }
+  .lb-row:hover { background: rgba(255,255,255,0.02); }
+
+  .lb-row::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+  }
+
+  .lb-row.rank-1::before { background: var(--gold); }
+  .lb-row.rank-2::before { background: #c0c0c0; }
+  .lb-row.rank-3::before { background: #cd7f32; }
+
+  .lb-rank {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .lb-row.rank-1 .lb-rank { color: var(--gold); }
+  .lb-row.rank-2 .lb-rank { color: #c0c0c0; }
+  .lb-row.rank-3 .lb-rank { color: #cd7f32; }
+
+  .lb-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.03em;
+  }
+
+  .lb-session {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .lb-bar-wrap {
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    min-width: 80px;
+  }
+
+  .lb-bar {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+    transition: width 0.6s ease;
+  }
+
+  .lb-points {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--accent);
+    text-align: right;
+    min-width: 50px;
+  }
+
+  .lb-pts-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: right;
+    letter-spacing: 0.08em;
+  }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+  }
+
+  /* Stats bar */
+  .stats-row {
+    display: flex;
+    gap: 24px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .stat-val {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+    color: var(--accent);
+  }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* Error state */
+  .error-msg {
+    background: rgba(255,62,108,0.1);
+    border: 1px solid rgba(255,62,108,0.3);
+    color: var(--accent2);
+    padding: 12px 16px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-bottom: 16px;
+  }
+
+  /* Axes labels */
+  .axis-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    fill: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* Canvas SVG wrapper */
+  .svg-container {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    #dashboard.visible {
+      grid-template-columns: 1fr;
+    }
+    #leaderboard-panel { grid-column: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div>
+      <h1 class="header-title">Network<span>Experiment</span></h1>
+      <p class="header-sub">Coordination Game · Visual Analyzer</p>
+    </div>
+  </div>
+
+  <div id="upload-zone">
+    <input type="file" id="csv-input" accept=".csv">
+    <span class="upload-icon">⬆</span>
+    <div class="upload-label">Drop your oTree CSV here</div>
+    <div class="upload-hint">or click to browse · wide-format all_apps export</div>
+  </div>
+
+  <div id="session-tabs"></div>
+
+  <div id="dashboard">
+    <!-- Panel 1: Coordination over time -->
+    <div class="panel" id="line-panel">
+      <div class="panel-header">
+        <span class="panel-num">01</span>
+        <span class="panel-title">Coordination Rate per Trial</span>
+      </div>
+      <div class="stats-row" id="line-stats"></div>
+      <div class="panel-body">
+        <div class="chart-area">
+          <div class="svg-container" id="line-chart-wrap"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel 2: Response heatmap -->
+    <div class="panel" id="heatmap-panel">
+      <div class="panel-header">
+        <span class="panel-num">02</span>
+        <span class="panel-title">Response Heatmap · Subjects × Trials</span>
+      </div>
+      <div class="panel-body">
+        <div id="heatmap-wrap">
+          <div id="heatmap-container"></div>
+        </div>
+        <div class="legend" id="heatmap-legend"></div>
+      </div>
+    </div>
+
+    <!-- Panel 3: Leaderboard -->
+    <div class="panel" id="leaderboard-panel">
+      <div class="panel-header">
+        <span class="panel-num">03</span>
+        <span class="panel-title">Leaderboard · Total Points</span>
+      </div>
+      <div id="leaderboard-list"></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="tooltip">
+  <div class="tt-name" id="tt-name"></div>
+  <div class="tt-response" id="tt-response"></div>
+  <div class="tt-payoff" id="tt-payoff"></div>
+</div>
+
+<script>
+// ─── PALETTE ───────────────────────────────────────────────────────────────
+const PALETTE = [
+  '#00e5ff','#ff3e6c','#a8ff78','#ffd166','#c77dff',
+  '#ff9f1c','#4cc9f0','#f72585','#7fff00','#fb8500',
+  '#56cfe1','#e040fb','#43aa8b','#f94144','#577590',
+  '#90be6d','#f3722c','#277da1','#f9c74f','#4d908e'
+];
+
+const ACCENT = '#00e5ff';
+const MUTED = '#5a6070';
+const BG = '#0a0c10';
+const SURFACE = '#111318';
+const BORDER = '#252830';
+const TEXT = '#e8eaf0';
+
+// ─── STATE ─────────────────────────────────────────────────────────────────
+let allData = [];        // parsed rows
+let sessions = [];       // [{code, rows}]
+let activeSession = null; // 'all' or session code
+let numTrials = 0;
+
+// ─── UPLOAD ────────────────────────────────────────────────────────────────
+const uploadZone = document.getElementById('upload-zone');
+const csvInput = document.getElementById('csv-input');
+
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+});
+
+csvInput.addEventListener('change', e => {
+  if (e.target.files[0]) processFile(e.target.files[0]);
+});
+
+function processFile(file) {
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete: result => {
+      if (!result.data || result.data.length === 0) return;
+      allData = result.data;
+      parseData();
+      buildSessionTabs();
+      activeSession = 'all';
+      setActiveTab('all');
+      renderAll();
+      document.getElementById('dashboard').classList.add('visible');
+      uploadZone.style.display = 'none';
+    }
+  });
+}
+
+// ─── PARSE ─────────────────────────────────────────────────────────────────
+function parseData() {
+  // Detect number of trials
+  numTrials = 0;
+  const headers = Object.keys(allData[0]);
+  let t = 1;
+  while (headers.some(h => h.startsWith(`timed_experiment.${t}.`))) {
+    numTrials = t;
+    t++;
+  }
+
+  // Group by session
+  const sessionMap = {};
+  allData.forEach(row => {
+    const sc = row['session.code'];
+    if (!sessionMap[sc]) sessionMap[sc] = [];
+    sessionMap[sc].push(row);
+  });
+
+  sessions = Object.entries(sessionMap).map(([code, rows]) => ({ code, rows }));
+}
+
+function getActiveRows() {
+  if (activeSession === 'all') return allData;
+  const s = sessions.find(s => s.code === activeSession);
+  return s ? s.rows : [];
+}
+
+// For a row, get trial data
+function getTrialData(row, trial) {
+  const prefix = `timed_experiment.${trial}.player.`;
+  return {
+    name: row[prefix + 'name'] || '',
+    payoff: parseFloat(row[prefix + 'payoff']) || 0,
+    round: parseInt(row[`timed_experiment.${trial}.subsession.round_number`]) || trial,
+  };
+}
+
+function getParticipantName(row) {
+  return row['participant.name'] || row['participant.label'] || row['participant.code'] || '?';
+}
+
+function getTotalPayoff(row) {
+  return parseFloat(row['participant.payoff']) || 0;
+}
+
+// ─── SESSION TABS ───────────────────────────────────────────────────────────
+function buildSessionTabs() {
+  const container = document.getElementById('session-tabs');
+  container.innerHTML = '';
+
+  const allTab = document.createElement('button');
+  allTab.className = 'session-tab all-tab';
+  allTab.dataset.session = 'all';
+  allTab.textContent = `ALL SESSIONS (${allData.length} subjects)`;
+  allTab.addEventListener('click', () => { activeSession = 'all'; setActiveTab('all'); renderAll(); });
+  container.appendChild(allTab);
+
+  sessions.forEach((s, i) => {
+    const tab = document.createElement('button');
+    tab.className = 'session-tab';
+    tab.dataset.session = s.code;
+    tab.textContent = `Session ${i + 1}: ${s.code.slice(0,8)}… (${s.rows.length})`;
+    tab.addEventListener('click', () => { activeSession = s.code; setActiveTab(s.code); renderAll(); });
+    container.appendChild(tab);
+  });
+}
+
+function setActiveTab(code) {
+  document.querySelectorAll('.session-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.session === code);
+  });
+}
+
+// ─── RENDER ALL ─────────────────────────────────────────────────────────────
+function renderAll() {
+  const rows = getActiveRows();
+  renderLineChart(rows);
+  renderHeatmap(rows);
+  renderLeaderboard(rows);
+}
+
+// ─── CHART 1: LINE ──────────────────────────────────────────────────────────
+function renderLineChart(rows) {
+  const container = document.getElementById('line-chart-wrap');
+  const statsDiv = document.getElementById('line-stats');
+
+  // For each trial, find most common response and its % frequency
+  const trialStats = [];
+  for (let t = 1; t <= numTrials; t++) {
+    const responses = rows.map(r => getTrialData(r, t).name).filter(Boolean);
+    const freq = {};
+    responses.forEach(r => { freq[r] = (freq[r] || 0) + 1; });
+    const total = responses.length;
+    let maxCount = 0, maxResp = '';
+    Object.entries(freq).forEach(([resp, count]) => {
+      if (count > maxCount) { maxCount = count; maxResp = resp; }
+    });
+    const pct = total > 0 ? (maxCount / total) * 100 : 0;
+    trialStats.push({ trial: t, pct, response: maxResp, count: maxCount, total, freq });
+  }
+
+  // Stats bar
+  const avgCoord = trialStats.reduce((a, b) => a + b.pct, 0) / trialStats.length;
+  const maxPct = Math.max(...trialStats.map(s => s.pct));
+  statsDiv.innerHTML = `
+    <div class="stat-item">
+      <div class="stat-val">${rows.length}</div>
+      <div class="stat-label">Subjects</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val">${numTrials}</div>
+      <div class="stat-label">Trials</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val">${avgCoord.toFixed(0)}%</div>
+      <div class="stat-label">Avg Coord.</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val">${maxPct.toFixed(0)}%</div>
+      <div class="stat-label">Peak Coord.</div>
+    </div>
+  `;
+
+  // SVG chart
+  const W = 520, H = 280;
+  const pad = { top: 24, right: 24, bottom: 48, left: 56 };
+  const chartW = W - pad.left - pad.right;
+  const chartH = H - pad.top - pad.bottom;
+
+  const xStep = chartW / Math.max(numTrials - 1, 1);
+  const xPos = i => pad.left + i * xStep;
+  const yPos = pct => pad.top + chartH - (pct / 100) * chartH;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:${W}px;overflow:visible">`;
+
+  // Y gridlines
+  for (let p = 0; p <= 100; p += 25) {
+    const y = yPos(p);
+    svg += `<line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}" stroke="${BORDER}" stroke-width="1"/>`;
+    svg += `<text x="${pad.left - 8}" y="${y + 4}" class="axis-label" text-anchor="end" font-family="DM Mono, monospace" font-size="10" fill="${MUTED}">${p}%</text>`;
+  }
+
+  // X axis labels
+  trialStats.forEach((s, i) => {
+    const x = xPos(i);
+    svg += `<text x="${x}" y="${H - pad.bottom + 18}" class="axis-label" text-anchor="middle" font-family="DM Mono, monospace" font-size="10" fill="${MUTED}">T${s.trial}</text>`;
+    svg += `<text x="${x}" y="${H - pad.bottom + 30}" class="axis-label" text-anchor="middle" font-family="DM Mono, monospace" font-size="9" fill="${MUTED}40">${s.response}</text>`;
+  });
+
+  // Area fill
+  if (trialStats.length > 0) {
+    let area = `M ${xPos(0)} ${yPos(trialStats[0].pct)}`;
+    trialStats.slice(1).forEach((s, i) => { area += ` L ${xPos(i+1)} ${yPos(s.pct)}`; });
+    area += ` L ${xPos(trialStats.length-1)} ${pad.top + chartH} L ${xPos(0)} ${pad.top + chartH} Z`;
+    svg += `<defs><linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${ACCENT}" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="${ACCENT}" stop-opacity="0"/>
+    </linearGradient></defs>`;
+    svg += `<path d="${area}" fill="url(#lineGrad)"/>`;
+
+    // Line
+    let line = `M ${xPos(0)} ${yPos(trialStats[0].pct)}`;
+    trialStats.slice(1).forEach((s, i) => { line += ` L ${xPos(i+1)} ${yPos(s.pct)}`; });
+    svg += `<path d="${line}" fill="none" stroke="${ACCENT}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+
+    // Points + labels
+    trialStats.forEach((s, i) => {
+      const x = xPos(i), y = yPos(s.pct);
+      svg += `<circle cx="${x}" cy="${y}" r="5" fill="${BG}" stroke="${ACCENT}" stroke-width="2.5"/>`;
+      svg += `<circle cx="${x}" cy="${y}" r="2.5" fill="${ACCENT}"/>`;
+      const labelY = y > pad.top + 20 ? y - 12 : y + 20;
+      svg += `<text x="${x}" y="${labelY}" text-anchor="middle" font-family="Syne, sans-serif" font-weight="700" font-size="12" fill="${ACCENT}">${s.pct.toFixed(0)}%</text>`;
+    });
+  }
+
+  // Axis lines
+  svg += `<line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${pad.top + chartH}" stroke="${BORDER}" stroke-width="1.5"/>`;
+  svg += `<line x1="${pad.left}" y1="${pad.top + chartH}" x2="${W - pad.right}" y2="${pad.top + chartH}" stroke="${BORDER}" stroke-width="1.5"/>`;
+
+  // Y-axis label
+  svg += `<text x="${15}" y="${pad.top + chartH/2}" text-anchor="middle" font-family="DM Mono, monospace" font-size="10" fill="${MUTED}" transform="rotate(-90, 15, ${pad.top + chartH/2})">% Group Consensus</text>`;
+
+  svg += '</svg>';
+  container.innerHTML = svg;
+}
+
+// ─── CHART 2: HEATMAP ───────────────────────────────────────────────────────
+function renderHeatmap(rows) {
+  const container = document.getElementById('heatmap-container');
+  const legendDiv = document.getElementById('heatmap-legend');
+
+  if (rows.length === 0) { container.innerHTML = ''; return; }
+
+  // Collect all unique responses per trial
+  const trialResponses = {}; // trial -> Set of response strings
+  const participantResponses = {}; // participantCode -> { trial -> {response, payoff} }
+
+  rows.forEach(row => {
+    const pCode = row['participant.code'];
+    participantResponses[pCode] = participantResponses[pCode] || {};
+    for (let t = 1; t <= numTrials; t++) {
+      const td = getTrialData(row, t);
+      participantResponses[pCode][t] = td;
+      if (!trialResponses[t]) trialResponses[t] = new Set();
+      if (td.name) trialResponses[t].add(td.name);
+    }
+  });
+
+  // Build global color map for all unique words
+  const allWords = new Set();
+  Object.values(trialResponses).forEach(set => set.forEach(w => allWords.add(w)));
+  const wordList = [...allWords].sort();
+  const colorMap = {};
+  wordList.forEach((w, i) => { colorMap[w] = PALETTE[i % PALETTE.length]; });
+
+  // Grid: rows = participants, cols = trials + label column
+  const numCols = numTrials + 1;
+  container.style.gridTemplateColumns = `80px repeat(${numTrials}, 1fr)`;
+
+  container.innerHTML = '';
+
+  // Header row: blank + Trial labels
+  const blankHeader = document.createElement('div');
+  blankHeader.className = 'heatmap-cell header-cell';
+  blankHeader.textContent = 'Subject';
+  container.appendChild(blankHeader);
+
+  for (let t = 1; t <= numTrials; t++) {
+    const h = document.createElement('div');
+    h.className = 'heatmap-cell header-cell';
+    h.textContent = `Trial ${t}`;
+    container.appendChild(h);
+  }
+
+  // Participant rows
+  const tooltip = document.getElementById('tooltip');
+  const ttName = document.getElementById('tt-name');
+  const ttResp = document.getElementById('tt-response');
+  const ttPayoff = document.getElementById('tt-payoff');
+
+  rows.forEach(row => {
+    const pCode = row['participant.code'];
+    const pName = getParticipantName(row);
+
+    // Row label
+    const label = document.createElement('div');
+    label.className = 'heatmap-cell row-label';
+    label.textContent = pName;
+    container.appendChild(label);
+
+    // Trial cells
+    for (let t = 1; t <= numTrials; t++) {
+      const td = participantResponses[pCode] ? participantResponses[pCode][t] : null;
+      const cell = document.createElement('div');
+      cell.className = 'heatmap-cell';
+
+      if (td && td.name) {
+        const base = colorMap[td.name] || '#888';
+        cell.style.background = base;
+        // Dim if no payoff, bright if payoff
+        cell.style.opacity = td.payoff > 0 ? '1' : '0.45';
+        cell.textContent = td.name;
+        cell.style.fontSize = td.name.length > 6 ? '8px' : '9px';
+
+        // Tooltip
+        cell.addEventListener('mousemove', e => {
+          tooltip.style.display = 'block';
+          tooltip.style.left = (e.clientX + 14) + 'px';
+          tooltip.style.top = (e.clientY - 14) + 'px';
+          ttName.textContent = pName;
+          ttResp.textContent = `Response: "${td.name}"`;
+          ttPayoff.textContent = `Points: ${td.payoff}`;
+        });
+        cell.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+
+        // Ring if earned points
+        if (td.payoff > 0) {
+          cell.style.boxShadow = `inset 0 0 0 2px rgba(255,255,255,0.5)`;
+        }
+      } else {
+        cell.style.background = BORDER;
+        cell.textContent = '—';
+        cell.style.color = MUTED;
+      }
+
+      container.appendChild(cell);
+    }
+  });
+
+  // Legend
+  legendDiv.innerHTML = '';
+  wordList.forEach(w => {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.innerHTML = `<div class="legend-swatch" style="background:${colorMap[w]}"></div>${w}`;
+    legendDiv.appendChild(item);
+  });
+}
+
+// ─── CHART 3: LEADERBOARD ───────────────────────────────────────────────────
+function renderLeaderboard(rows) {
+  const container = document.getElementById('leaderboard-list');
+
+  const players = rows.map(row => ({
+    name: getParticipantName(row),
+    points: getTotalPayoff(row),
+    sessionCode: row['session.code'] || '',
+  })).sort((a, b) => b.points - a.points);
+
+  const maxPoints = players.length > 0 ? Math.max(...players.map(p => p.points)) : 1;
+
+  // Find session index for label
+  const sessionIndex = {};
+  sessions.forEach((s, i) => { sessionIndex[s.code] = i + 1; });
+
+  container.innerHTML = '';
+
+  players.forEach((player, i) => {
+    const rank = i + 1;
+    const row = document.createElement('div');
+    row.className = `lb-row ${rank <= 3 ? 'rank-' + rank : ''}`;
+
+    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+    const sessionLabel = sessionIndex[player.sessionCode] ? `Session ${sessionIndex[player.sessionCode]}` : '';
+    const barW = maxPoints > 0 ? (player.points / maxPoints) * 100 : 0;
+    const barColor = rank === 1 ? 'var(--gold)' : rank === 2 ? '#c0c0c0' : rank === 3 ? '#cd7f32' : ACCENT;
+
+    row.innerHTML = `
+      <div class="lb-rank">${medal}</div>
+      <div>
+        <div class="lb-name">${player.name}</div>
+        ${sessionLabel ? `<div class="lb-session">${sessionLabel}</div>` : ''}
+      </div>
+      <div class="lb-bar-wrap" style="min-width:120px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;display:flex;align-items:center">
+        <div class="lb-bar" style="width:${barW}%;background:${barColor};height:100%;border-radius:2px"></div>
+      </div>
+      <div>
+        <div class="lb-points" style="color:${barColor}">${player.points.toFixed(1)}</div>
+        <div class="lb-pts-label">pts</div>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+// ─── INIT ───────────────────────────────────────────────────────────────────
+// Auto-load if there's a URL param (optional future feature)
+</script>
+</body>
+</html>
