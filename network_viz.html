@@ -164,16 +164,55 @@
     background: rgba(168,255,120,0.06);
   }
 
+  /* VIEW TABS */
+  #view-tabs {
+    display: none;
+    gap: 4px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0;
+  }
+
+  #view-tabs.visible {
+    display: flex;
+  }
+
+  .view-tab {
+    padding: 8px 20px;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    border: none;
+    border-bottom: 2px solid transparent;
+    text-transform: uppercase;
+    transition: all 0.15s;
+    margin-bottom: -1px;
+  }
+
+  .view-tab:hover {
+    color: var(--text);
+  }
+
+  .view-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .view-tab[data-view="leaderboard"].active {
+    color: var(--gold);
+    border-bottom-color: var(--gold);
+  }
+
   /* DASHBOARD GRID */
   #dashboard {
     display: none;
-    gap: 24px;
   }
 
   #dashboard.visible {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto;
+    display: block;
   }
 
   .panel {
@@ -181,6 +220,11 @@
     border: 1px solid var(--border);
     border-radius: 4px;
     overflow: hidden;
+    display: none;
+  }
+
+  .panel.active-panel {
+    display: block;
   }
 
   .panel-header {
@@ -230,62 +274,60 @@
 
   /* Chart 2: Heatmap */
   #heatmap-wrap {
-    overflow-x: auto;
+    width: 100%;
   }
 
   #heatmap-container {
     display: grid;
-    gap: 3px;
-    min-width: fit-content;
+    gap: 2px;
+    width: 100%;
   }
 
   .heatmap-cell {
-    width: 100%;
-    aspect-ratio: 1.2;
-    min-width: 52px;
     border-radius: 2px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 9px;
-    letter-spacing: 0.05em;
-    color: rgba(0,0,0,0.7);
+    font-size: 7px;
+    letter-spacing: 0.02em;
+    color: rgba(0,0,0,0.65);
     font-weight: 500;
-    transition: transform 0.1s;
     cursor: default;
-    position: relative;
     overflow: hidden;
-    padding: 2px;
+    padding: 1px;
     text-align: center;
-    line-height: 1.2;
+    line-height: 1.1;
+    height: 28px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   .heatmap-cell:hover {
-    transform: scale(1.05);
+    outline: 1px solid rgba(255,255,255,0.4);
     z-index: 10;
   }
 
   .heatmap-cell.header-cell {
     background: transparent !important;
     color: var(--muted);
-    font-size: 10px;
+    font-size: 8px;
     font-weight: 500;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     justify-content: center;
-    aspect-ratio: auto;
-    min-height: 28px;
-    padding: 4px 2px;
+    height: 20px;
+    padding: 2px 1px;
   }
 
   .heatmap-cell.row-label {
     background: transparent !important;
     color: var(--muted);
-    font-size: 10px;
+    font-size: 9px;
     justify-content: flex-end;
-    padding-right: 8px;
-    aspect-ratio: auto;
-    min-width: 70px;
+    padding-right: 6px;
+    height: 28px;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* Tooltip */
@@ -309,10 +351,6 @@
   #tooltip .tt-payoff { color: var(--gold); }
 
   /* Leaderboard */
-  #leaderboard-panel {
-    grid-column: 1 / -1;
-  }
-
   #leaderboard-list {
     display: grid;
     gap: 0;
@@ -484,10 +522,7 @@
 
   /* Responsive */
   @media (max-width: 900px) {
-    #dashboard.visible {
-      grid-template-columns: 1fr;
-    }
-    #leaderboard-panel { grid-column: 1; }
+    #view-tabs .view-tab { font-size: 10px; padding: 6px 12px; }
   }
 </style>
 </head>
@@ -510,9 +545,15 @@
 
   <div id="session-tabs"></div>
 
+  <div id="view-tabs">
+    <button class="view-tab active" data-view="line">01 · Coordination</button>
+    <button class="view-tab" data-view="heatmap">02 · Heatmap</button>
+    <button class="view-tab" data-view="leaderboard">03 · Leaderboard</button>
+  </div>
+
   <div id="dashboard">
     <!-- Panel 1: Coordination over time -->
-    <div class="panel" id="line-panel">
+    <div class="panel active-panel" id="line-panel" data-panel="line">
       <div class="panel-header">
         <span class="panel-num">01</span>
         <span class="panel-title">Coordination Rate per Trial</span>
@@ -526,7 +567,7 @@
     </div>
 
     <!-- Panel 2: Response heatmap -->
-    <div class="panel" id="heatmap-panel">
+    <div class="panel" id="heatmap-panel" data-panel="heatmap">
       <div class="panel-header">
         <span class="panel-num">02</span>
         <span class="panel-title">Response Heatmap · Subjects × Trials</span>
@@ -540,7 +581,7 @@
     </div>
 
     <!-- Panel 3: Leaderboard -->
-    <div class="panel" id="leaderboard-panel">
+    <div class="panel" id="leaderboard-panel" data-panel="leaderboard">
       <div class="panel-header">
         <span class="panel-num">03</span>
         <span class="panel-title">Leaderboard · Total Points</span>
@@ -558,6 +599,18 @@
 </div>
 
 <script>
+// ─── VIEW TABS ───────────────────────────────────────────────────────────────
+document.querySelectorAll('.view-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const view = tab.dataset.view;
+    document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.panel').forEach(p => {
+      p.classList.toggle('active-panel', p.dataset.panel === view);
+    });
+  });
+});
+
 // ─── PALETTE ───────────────────────────────────────────────────────────────
 const PALETTE = [
   '#00e5ff','#ff3e6c','#a8ff78','#ffd166','#c77dff',
@@ -609,6 +662,7 @@ function processFile(file) {
       setActiveTab('all');
       renderAll();
       document.getElementById('dashboard').classList.add('visible');
+      document.getElementById('view-tabs').classList.add('visible');
       uploadZone.style.display = 'none';
     }
   });
@@ -831,8 +885,9 @@ function renderHeatmap(rows) {
   wordList.forEach((w, i) => { colorMap[w] = PALETTE[i % PALETTE.length]; });
 
   // Grid: rows = participants, cols = trials + label column
-  const numCols = numTrials + 1;
-  container.style.gridTemplateColumns = `80px repeat(${numTrials}, 1fr)`;
+  const labelColW = '60px';
+  container.style.gridTemplateColumns = `${labelColW} repeat(${numTrials}, 1fr)`;
+  container.style.width = '100%';
 
   container.innerHTML = '';
 
@@ -877,7 +932,6 @@ function renderHeatmap(rows) {
         // Dim if no payoff, bright if payoff
         cell.style.opacity = td.payoff > 0 ? '1' : '0.45';
         cell.textContent = td.name;
-        cell.style.fontSize = td.name.length > 6 ? '8px' : '9px';
 
         // Tooltip
         cell.addEventListener('mousemove', e => {
